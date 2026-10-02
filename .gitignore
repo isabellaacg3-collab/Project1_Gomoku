@@ -9,3 +9,7 @@
 *.gch
 *.pch
 *.d
+
+# Dev-C++ generated project files
+/Makefile.win
+*.layout
