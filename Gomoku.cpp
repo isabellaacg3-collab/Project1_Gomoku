@@ -6,6 +6,8 @@ void drawBoard(int whiteWins,int blackWins){
 	xyprintf(650, 60, "White Wins: %d", whiteWins);
 	xyprintf(650, 90, "Black Wins: %d", blackWins);
 	xyprintf(650,320, "White Turn");
+	rectangle(650,580,780,630);
+	xyprintf(670,600,"Back to Menu");
 	for(int i = 0;i < lines;i++){
 		line(start,start + i * gap,start + (lines - 1) * gap,start + i * gap);
 		line(start + i * gap,start,start + i * gap,start + (lines - 1) * gap);
