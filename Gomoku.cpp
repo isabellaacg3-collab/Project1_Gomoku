@@ -1,7 +1,11 @@
 #include "Gomoku.h"
 #include <graphics.h>
+#include <cmath>
+#include <algorithm>
+using namespace std;
 
 void drawBoard(int whiteWins,int blackWins){
+	cleardevice();
 	setcolor(BLACK);	
 	xyprintf(650, 60, "White Wins: %d", whiteWins);
 	xyprintf(650, 90, "Black Wins: %d", blackWins);
@@ -19,10 +23,8 @@ int countColor(int row,int col,int dr,int dc,int currentPlayer){
 	int count = 0;
 	row += dr;
 	col += dc;
-	while(row >= 0
-	&& col >= 0
-	&& row < lines
-	&& col < lines){
+	while(row >= 0 && col >= 0
+	&& row < lines && col < lines){
 		if(board[row][col] == currentPlayer){
 			count++;
 			row += dr;
@@ -59,7 +61,6 @@ void resetRound(int &currentPlayer){
 	roundOver = false;
 	currentPlayer = 1;
 	
-	cleardevice();
 	drawBoard(whiteWins,blackWins);
 }
 
@@ -76,7 +77,6 @@ void resetGame(int &currentPlayer){
 	blackWins = 0;
 	currentPlayer = 1;
 	
-	cleardevice();
 	drawBoard(whiteWins,blackWins);
 }
 
@@ -98,8 +98,48 @@ void roundWin(int &currentPlayer){
 	}
 }
 
-void nextChess(int &currentPlayer,int row,int col){
+bool checkWin(int row,int col,int &currentPlayer){
+    int count = max({countColor(row,col,0,1,currentPlayer)+countColor(row,col,0,-1,currentPlayer),
+	countColor(row,col,1,0,currentPlayer)+countColor(row,col,-1,0,currentPlayer),
+	countColor(row,col,1,1,currentPlayer)+countColor(row,col,-1,-1,currentPlayer),
+	countColor(row,col,-1,1,currentPlayer)+countColor(row,col,1,-1,currentPlayer),
+	}) + 1;
+	if(count >= 5){
+	    roundWin(currentPlayer);
+	    return true;
+	}else{
+		if(currentPlayer == 1){
+	        xyprintf(650,320, "Black Turn");
+	    }else{
+	        xyprintf(650,320, "White Turn");
+	    }
+	    return false;
+	} 
+}
+
+bool canPlaceChess(int msgX,int msgY,int &row,int &col){
+	if(msgX > start - clickDist 
+	&& msgY > start - clickDist
+	&& msgX < start + (lines - 1) * gap + clickDist
+	&& msgY < start + (lines - 1) * gap + clickDist){
+		col = (msgX - start + gap/2) / gap;
+		row = (msgY - start + gap/2) / gap;
+		int dx = col * gap + start - msgX;
+		int dy = row * gap + start - msgY;
+		double Dist = sqrt(dx * dx + dy * dy);
+		if(Dist <= clickDist && board[row][col] == 0){
+			return true;
+		}
+	}
+	return false;
+}
+
+void placeChess(int row, int col, int &currentPlayer){
+	board[row][col] = currentPlayer;
 	currentPlayer == 1 ? setfillcolor(WHITE) : setfillcolor(BLACK);
 	fillellipse(col * gap + start,row * gap + start,chessSize,chessSize);
+}
+
+void switchPlayer(int &currentPlayer){
 	currentPlayer = currentPlayer == 1 ? 2 : 1;
 }
