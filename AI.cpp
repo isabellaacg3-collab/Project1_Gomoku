@@ -78,7 +78,7 @@ int getScore(int row,int col,int dr,int dc,int aiPlayer){
 
 bool chooseEasyMove(int aiPlayer,int &bestRow,int &bestCol){
 	int bestScore = 0;
-	bool isFull = true;
+	bool hasMove = false;
 	for(int row = 0;row < lines;row++){
 		for(int col = 0;col < lines;col++){
 			if(board[row][col] == 0){
@@ -89,9 +89,133 @@ bool chooseEasyMove(int aiPlayer,int &bestRow,int &bestCol){
 					bestRow = row;
 					bestCol = col;
 				}
-				isFull = false;
+				hasMove = true;
 			}
 		}
 	}
-	return !isFull;
+	return hasMove;
+}
+
+int scoreDirection(int row, int col, int dr, int dc, int player){
+	int count = 1;
+	int openEnds = 0;
+	int rowptr = row + dr;
+	int colptr = col + dc;
+	while(rowptr >= 0 && colptr >= 0
+	&& rowptr < lines && colptr < lines){
+		if(board[rowptr][colptr] == player){
+			count++;
+			rowptr += dr;
+			colptr += dc;
+		}else if(board[rowptr][colptr] == 0){
+			openEnds++;
+			break;
+		}else{
+			break;
+		}
+	}
+	
+	rowptr = row - dr;
+	colptr = col - dc;
+	while(rowptr >= 0 && colptr >= 0
+	&& rowptr < lines && colptr < lines){
+		if(board[rowptr][colptr] == player){
+			count++;
+			rowptr -= dr;
+			colptr -= dc;
+		}else if(board[rowptr][colptr] == 0){
+			openEnds++;
+			break;
+		}else{
+			break;
+		}
+	}
+	
+	if(count >= 5){
+		return greedScore[7];
+	}else if(count == 4 && openEnds == 2){
+		return greedScore[6];
+	}else if(count == 4 && openEnds == 1){
+		return greedScore[5];
+	}else if(count == 3 && openEnds == 2){
+		return greedScore[4];
+	}else if(count == 3 && openEnds == 1){
+		return greedScore[3];
+	}else if(count == 2 && openEnds == 2){
+		return greedScore[2];
+	}else if(count == 2 && openEnds == 1){
+		return greedScore[1];
+	}else{
+		return greedScore[0];
+	}
+}
+
+int scorePoint(int row,int col,int player){
+	return scoreDirection(row,col,0,1,player) + scoreDirection(row,col,1,0,player)
+	+ scoreDirection(row,col,1,1,player) + scoreDirection(row,col,-1,1,player);
+}
+
+bool chooseNormalMove(int aiPlayer,int &bestRow,int &bestCol){
+	int opPlayer = aiPlayer == 1 ? 2 : 1;
+	bool hasMove = false;
+	
+	bool isEmpty = true;
+	for(int row = 0;row < lines;row++){
+		for(int col = 0;col < lines;col++){
+			if(board[row][col] != 0){
+				isEmpty = false;
+				break;
+			}
+		}
+		if(!isEmpty){
+			break;
+		}
+	}
+	if(isEmpty){
+		bestRow = lines / 2;
+        bestCol = lines / 2;
+        return true;
+	}
+	
+	for(int row = 0;row < lines;row++){
+		for(int col = 0;col < lines;col++){
+			if(board[row][col] == 0){
+				if(isWinningMove(row,col,aiPlayer)){
+					bestRow = row;
+					bestCol = col;
+					return true;
+				}
+			}
+		}
+	}
+	for(int row = 0;row < lines;row++){
+		for(int col = 0;col < lines;col++){
+			if(board[row][col] == 0){
+				if(isWinningMove(row,col,opPlayer)){
+					bestRow = row;
+					bestCol = col;
+					return true;
+				}
+			}
+		}
+	}
+	
+	double bestGreedScore = 0;
+	double power = 0.9;
+	for(int row = 0;row < lines;row++){
+		for(int col = 0;col < lines;col++){
+			if(board[row][col] == 0){
+				hasMove = true;
+				int attackScore = scorePoint(row,col,aiPlayer);
+				int defenseScore = scorePoint(row,col,opPlayer);
+				double tempScore = attackScore + defenseScore * power;
+				if(tempScore > bestGreedScore){
+					bestGreedScore = tempScore;
+					bestRow = row;
+					bestCol = col;
+				}
+			}
+		}
+	}
+	return hasMove;
 }

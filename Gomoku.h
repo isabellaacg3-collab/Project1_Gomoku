@@ -13,9 +13,9 @@ extern bool roundOver;
 extern bool gameOver;
 extern int whiteWins;
 extern int blackWins;
-extern bool playerTurn;
 
 void drawBoard(int whiteWins,int blackWins);
+void drawCurrentTurn(int currentPlayer);
 
 void roundWin(int &currentPlayer);
 void gameWin(int currentPlayer);
@@ -25,7 +25,10 @@ void resetGame(int &currentPlayer);
 
 bool canPlaceChess(int msgX,int msgY,int &row,int &col);
 void placeChess(int row, int col, int &currentPlayer);
+
 bool checkWin(int row, int col, int &currentPlayer);
+bool isWinningMove(int row,int col,int currentPlayer);
+
 void switchPlayer(int &currentPlayer);
 
 int countColor(int row,int col,int dr,int dc,int currentPlayer);

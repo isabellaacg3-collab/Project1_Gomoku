@@ -9,7 +9,6 @@ void drawBoard(int whiteWins,int blackWins){
 	setcolor(BLACK);	
 	xyprintf(650, 60, "White Wins: %d", whiteWins);
 	xyprintf(650, 90, "Black Wins: %d", blackWins);
-	xyprintf(650,320, "White Turn");
 	rectangle(650,580,780,630);
 	xyprintf(670,600,"Back to Menu");
 	for(int i = 0;i < lines;i++){
@@ -18,6 +17,13 @@ void drawBoard(int whiteWins,int blackWins){
 	}
 }
 
+void drawCurrentTurn(int currentPlayer){
+	if(currentPlayer == 1){
+	    xyprintf(650,320, "White Turn");
+	}else{
+		xyprintf(650,320, "Black Turn");
+	}
+}
 
 int countColor(int row,int col,int dr,int dc,int currentPlayer){
 	int count = 0;
@@ -99,12 +105,7 @@ void roundWin(int &currentPlayer){
 }
 
 bool checkWin(int row,int col,int &currentPlayer){
-    int count = max({countColor(row,col,0,1,currentPlayer)+countColor(row,col,0,-1,currentPlayer),
-	countColor(row,col,1,0,currentPlayer)+countColor(row,col,-1,0,currentPlayer),
-	countColor(row,col,1,1,currentPlayer)+countColor(row,col,-1,-1,currentPlayer),
-	countColor(row,col,-1,1,currentPlayer)+countColor(row,col,1,-1,currentPlayer),
-	}) + 1;
-	if(count >= 5){
+	if(isWinningMove(row,col,currentPlayer)){
 	    roundWin(currentPlayer);
 	    return true;
 	}else{
@@ -142,4 +143,11 @@ void placeChess(int row, int col, int &currentPlayer){
 
 void switchPlayer(int &currentPlayer){
 	currentPlayer = currentPlayer == 1 ? 2 : 1;
+}
+
+bool isWinningMove(int row,int col,int currentPlayer){
+	return countColor(row,col,0,1,currentPlayer) + countColor(row,col,0,-1,currentPlayer) >= 4
+	||countColor(row,col,1,0,currentPlayer) + countColor(row,col,-1,0,currentPlayer) >=4
+	||countColor(row,col,1,1,currentPlayer) + countColor(row,col,-1,-1,currentPlayer) >=4
+	||countColor(row,col,1,-1,currentPlayer) + countColor(row,col,-1,1,currentPlayer) >=4;
 }
