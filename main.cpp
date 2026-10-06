@@ -89,12 +89,16 @@ int main(){
 		    		    
 		    		    localStarter = (localStarter == 1) ? 2 : 1;
 		    		    currentPlayer = localStarter;
-		    		    
 		    		    drawCurrentTurn(currentPlayer);
 				    }
 			    }else if(gameOver){
 				    if(msg.x >= 650 && msg.x <=780 && msg.y >=420 && msg.y <=470){
 		    		    resetGame(currentPlayer);
+		    		    
+		    		    // Fix: reset both starter records so the next round alternates correctly.
+		    		    localStarter = 1;
+		    		    currentPlayer = localStarter;
+		    		    drawCurrentTurn(currentPlayer);
 				    }
 			    }
 			}else if(gamestate == AI_GAME_DIFFICULTY && msg.is_down() && msg.is_left()){
@@ -138,10 +142,14 @@ int main(){
 		        }else if(roundOver && !gameOver){
 		    	    if(msg.x >= 650 && msg.x <=780 && msg.y >=220 && msg.y <=270){
 		    		    resetRound(currentPlayer);
+		    		    // Fix: redraw the turn after resetting the board.
+		    		    drawCurrentTurn(currentPlayer);
 				    }
 			    }else if(gameOver){
 				    if(msg.x >= 650 && msg.x <=780 && msg.y >=420 && msg.y <=470){
 		    		    resetGame(currentPlayer);
+		    		    // Fix: redraw the turn after resetting the board.
+		    		    drawCurrentTurn(currentPlayer);
 				    }
 			    }
 			}else if(gamestate == AI_GAME_NORMAL && msg.is_down() && msg.is_left()){
@@ -163,10 +171,15 @@ int main(){
 		    	    if(msg.x >= 650 && msg.x <=780 && msg.y >=220 && msg.y <=270){
 		    		    resetRound(currentPlayer);
 		    	    	currentPlayer = rand() % 2 + 1;
+		    	    	// Fix: display the newly selected starter after resetting the board.
+		    	    	drawCurrentTurn(currentPlayer);
 				    }
 			    }else if(gameOver){
 				    if(msg.x >= 650 && msg.x <=780 && msg.y >=420 && msg.y <=470){
 		    		    resetGame(currentPlayer);
+		    		    currentPlayer = rand() % 2 + 1;
+		    		    // Fix: display the newly selected starter after resetting the board.
+		    		    drawCurrentTurn(currentPlayer);
 				    }
 			    }
 			}else if(gamestate == AI_GAME_HARD && msg.is_down() && msg.is_left()){
@@ -187,10 +200,16 @@ int main(){
 		        }else if(roundOver && !gameOver){
 		    	    if(msg.x >= 650 && msg.x <=780 && msg.y >=220 && msg.y <=270){
 		    		    resetRound(currentPlayer);
+		    		    currentPlayer = 2;
+		    		    // Fix: restore the Hard starter and redraw the turn after resetting the board.
+		    		    drawCurrentTurn(currentPlayer);
 				    }
 			    }else if(gameOver){
 				    if(msg.x >= 650 && msg.x <=780 && msg.y >=420 && msg.y <=470){
 		    		    resetGame(currentPlayer);
+		    		    // Fix: restore the Hard starter and redraw the turn after Reset.
+		    		    currentPlayer = 2;
+		    		    drawCurrentTurn(currentPlayer);
 				    }
 			    }
 			}
