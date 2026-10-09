@@ -19,6 +19,7 @@ void drawCurrentTurn(int currentPlayer);
 
 void roundWin(int &currentPlayer);
 void gameWin(int currentPlayer);
+void roundDraw();
 
 void resetRound(int &currentPlayer);
 void resetGame(int &currentPlayer);
@@ -28,7 +29,10 @@ void placeChess(int row, int col, int &currentPlayer);
 
 bool checkWin(int row, int col, int &currentPlayer);
 bool isWinningMove(int row,int col,int currentPlayer);
+bool isWinningMoveOnBoard(const int targetBoard[lines][lines],int row,int col,int currentPlayer);
+bool isBoardFull();
 
 void switchPlayer(int &currentPlayer);
 
 int countColor(int row,int col,int dr,int dc,int currentPlayer);
+int countColorOnBoard(const int targetBoard[lines][lines],int row,int col,int dr,int dc,int currentPlayer);

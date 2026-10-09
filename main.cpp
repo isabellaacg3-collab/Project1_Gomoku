@@ -38,7 +38,11 @@ int main(){
     		if(chooseEasyMove(currentPlayer,bestRow,bestCol)){
     			placeChess(bestRow,bestCol,currentPlayer);
     			if(!checkWin(bestRow,bestCol,currentPlayer)){
-					switchPlayer(currentPlayer);
+    				if(isBoardFull()){
+    					roundDraw();
+					}else{
+						switchPlayer(currentPlayer);
+					}
 				}
 			}
 		}else if(gamestate == AI_GAME_NORMAL && currentPlayer == 2 && !roundOver && !gameOver){
@@ -46,11 +50,25 @@ int main(){
     		if(chooseNormalMove(currentPlayer,bestRow,bestCol)){
     			placeChess(bestRow,bestCol,currentPlayer);
     			if(!checkWin(bestRow,bestCol,currentPlayer)){
-					switchPlayer(currentPlayer);
+					if(isBoardFull()){
+    					roundDraw();
+					}else{
+						switchPlayer(currentPlayer);
+					}
 				}
 			}
 		}else if(gamestate == AI_GAME_HARD && currentPlayer == 2 && !roundOver && !gameOver){
-    		//hard
+    		int bestRow,bestCol;
+    		if(chooseHardMove(currentPlayer,bestRow,bestCol)){
+    			placeChess(bestRow,bestCol,currentPlayer);
+    			if(!checkWin(bestRow,bestCol,currentPlayer)){
+					if(isBoardFull()){
+    					roundDraw();
+					}else{
+						switchPlayer(currentPlayer);
+					}
+				}
+			}
 		}
 		while(mousemsg()){
 			mouse_msg msg = getmouse();
@@ -80,7 +98,11 @@ int main(){
 					if(canPlaceChess(msg.x,msg.y,row,col)){
 						placeChess(row,col,currentPlayer);
 						if(!checkWin(row,col,currentPlayer)){
-							switchPlayer(currentPlayer);
+							if(isBoardFull()){
+    					        roundDraw();
+					        }else{
+						        switchPlayer(currentPlayer);
+					        }
 						}
 					}
 		        }else if(roundOver && !gameOver){
@@ -94,8 +116,6 @@ int main(){
 			    }else if(gameOver){
 				    if(msg.x >= 650 && msg.x <=780 && msg.y >=420 && msg.y <=470){
 		    		    resetGame(currentPlayer);
-		    		    
-		    		    // Fix: reset both starter records so the next round alternates correctly.
 		    		    localStarter = 1;
 		    		    currentPlayer = localStarter;
 		    		    drawCurrentTurn(currentPlayer);
@@ -136,19 +156,21 @@ int main(){
 					if(canPlaceChess(msg.x,msg.y,row,col)){
 						placeChess(row,col,currentPlayer);
 						if(!checkWin(row,col,currentPlayer)){
-							switchPlayer(currentPlayer);
+							if(isBoardFull()){
+    					        roundDraw();
+					        }else{
+						        switchPlayer(currentPlayer);
+					        }
 						}
 					}
 		        }else if(roundOver && !gameOver){
 		    	    if(msg.x >= 650 && msg.x <=780 && msg.y >=220 && msg.y <=270){
 		    		    resetRound(currentPlayer);
-		    		    // Fix: redraw the turn after resetting the board.
 		    		    drawCurrentTurn(currentPlayer);
 				    }
 			    }else if(gameOver){
 				    if(msg.x >= 650 && msg.x <=780 && msg.y >=420 && msg.y <=470){
 		    		    resetGame(currentPlayer);
-		    		    // Fix: redraw the turn after resetting the board.
 		    		    drawCurrentTurn(currentPlayer);
 				    }
 			    }
@@ -164,21 +186,23 @@ int main(){
 					if(canPlaceChess(msg.x,msg.y,row,col)){
 						placeChess(row,col,currentPlayer);
 						if(!checkWin(row,col,currentPlayer)){
-							switchPlayer(currentPlayer);
+							if(isBoardFull()){
+    					        roundDraw();
+					        }else{
+						        switchPlayer(currentPlayer);
+					        }
 						}
 					}
 		        }else if(roundOver && !gameOver){
 		    	    if(msg.x >= 650 && msg.x <=780 && msg.y >=220 && msg.y <=270){
 		    		    resetRound(currentPlayer);
 		    	    	currentPlayer = rand() % 2 + 1;
-		    	    	// Fix: display the newly selected starter after resetting the board.
 		    	    	drawCurrentTurn(currentPlayer);
 				    }
 			    }else if(gameOver){
 				    if(msg.x >= 650 && msg.x <=780 && msg.y >=420 && msg.y <=470){
 		    		    resetGame(currentPlayer);
 		    		    currentPlayer = rand() % 2 + 1;
-		    		    // Fix: display the newly selected starter after resetting the board.
 		    		    drawCurrentTurn(currentPlayer);
 				    }
 			    }
@@ -194,20 +218,22 @@ int main(){
 					if(canPlaceChess(msg.x,msg.y,row,col)){
 						placeChess(row,col,currentPlayer);
 						if(!checkWin(row,col,currentPlayer)){
-							switchPlayer(currentPlayer);
+							if(isBoardFull()){
+    					        roundDraw();
+					        }else{
+						        switchPlayer(currentPlayer);
+					        }
 						}
 					}
 		        }else if(roundOver && !gameOver){
 		    	    if(msg.x >= 650 && msg.x <=780 && msg.y >=220 && msg.y <=270){
 		    		    resetRound(currentPlayer);
 		    		    currentPlayer = 2;
-		    		    // Fix: restore the Hard starter and redraw the turn after resetting the board.
 		    		    drawCurrentTurn(currentPlayer);
 				    }
 			    }else if(gameOver){
 				    if(msg.x >= 650 && msg.x <=780 && msg.y >=420 && msg.y <=470){
 		    		    resetGame(currentPlayer);
-		    		    // Fix: restore the Hard starter and redraw the turn after Reset.
 		    		    currentPlayer = 2;
 		    		    drawCurrentTurn(currentPlayer);
 				    }

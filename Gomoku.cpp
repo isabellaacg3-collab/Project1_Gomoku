@@ -25,13 +25,13 @@ void drawCurrentTurn(int currentPlayer){
 	}
 }
 
-int countColor(int row,int col,int dr,int dc,int currentPlayer){
+int countColorOnBoard(const int targetBoard[lines][lines],int row,int col,int dr,int dc,int currentPlayer){
 	int count = 0;
 	row += dr;
 	col += dc;
 	while(row >= 0 && col >= 0
 	&& row < lines && col < lines){
-		if(board[row][col] == currentPlayer){
+		if(targetBoard[row][col] == currentPlayer){
 			count++;
 			row += dr;
 			col += dc;
@@ -40,6 +40,10 @@ int countColor(int row,int col,int dr,int dc,int currentPlayer){
 		}
 	}
 	return count;
+}
+
+int countColor(int row,int col,int dr,int dc,int currentPlayer){
+	return countColorOnBoard(board,row,col,dr,dc,currentPlayer);
 }
 
 
@@ -104,6 +108,13 @@ void roundWin(int &currentPlayer){
 	}
 }
 
+void roundDraw(){
+	roundOver = true;
+	xyprintf(670,190,"Draw!");
+	rectangle(650,220,780,270);
+	xyprintf(670,240,"Next Round");
+}
+
 bool checkWin(int row,int col,int &currentPlayer){
 	if(isWinningMove(row,col,currentPlayer)){
 	    roundWin(currentPlayer);
@@ -145,9 +156,24 @@ void switchPlayer(int &currentPlayer){
 	currentPlayer = currentPlayer == 1 ? 2 : 1;
 }
 
+bool isWinningMoveOnBoard(const int targetBoard[lines][lines],int row,int col,int currentPlayer){
+	return countColorOnBoard(targetBoard,row,col,0,1,currentPlayer) + countColorOnBoard(targetBoard,row,col,0,-1,currentPlayer) >= 4
+	||countColorOnBoard(targetBoard,row,col,1,0,currentPlayer) + countColorOnBoard(targetBoard,row,col,-1,0,currentPlayer) >=4
+	||countColorOnBoard(targetBoard,row,col,1,1,currentPlayer) + countColorOnBoard(targetBoard,row,col,-1,-1,currentPlayer) >=4
+	||countColorOnBoard(targetBoard,row,col,1,-1,currentPlayer) + countColorOnBoard(targetBoard,row,col,-1,1,currentPlayer) >=4;
+}
+
 bool isWinningMove(int row,int col,int currentPlayer){
-	return countColor(row,col,0,1,currentPlayer) + countColor(row,col,0,-1,currentPlayer) >= 4
-	||countColor(row,col,1,0,currentPlayer) + countColor(row,col,-1,0,currentPlayer) >=4
-	||countColor(row,col,1,1,currentPlayer) + countColor(row,col,-1,-1,currentPlayer) >=4
-	||countColor(row,col,1,-1,currentPlayer) + countColor(row,col,-1,1,currentPlayer) >=4;
+	return isWinningMoveOnBoard(board,row,col,currentPlayer);
+}
+
+bool isBoardFull(){
+	for(int row = 0;row < lines;row++){
+		for(int col = 0;col < lines;col++){
+			if(board[row][col] == 0){
+				return false;
+			}
+		}
+	}
+	return true;
 }

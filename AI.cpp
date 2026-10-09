@@ -2,6 +2,10 @@
 #include "AI.h"
 #include "Gomoku.h"
 
+const double WIN_SCORE = 1e9;
+
+int searchBoard[lines][lines];
+
 void drawDiffPanel(){
 	cleardevice();
 	
@@ -96,18 +100,18 @@ bool chooseEasyMove(int aiPlayer,int &bestRow,int &bestCol){
 	return hasMove;
 }
 
-int scoreDirection(int row, int col, int dr, int dc, int player){
+int scoreDirectionOnBoard(const int targetBoard[lines][lines],int row,int col,int dr,int dc,int player){
 	int count = 1;
 	int openEnds = 0;
 	int rowptr = row + dr;
 	int colptr = col + dc;
 	while(rowptr >= 0 && colptr >= 0
 	&& rowptr < lines && colptr < lines){
-		if(board[rowptr][colptr] == player){
+		if(targetBoard[rowptr][colptr] == player){
 			count++;
 			rowptr += dr;
 			colptr += dc;
-		}else if(board[rowptr][colptr] == 0){
+		}else if(targetBoard[rowptr][colptr] == 0){
 			openEnds++;
 			break;
 		}else{
@@ -119,11 +123,11 @@ int scoreDirection(int row, int col, int dr, int dc, int player){
 	colptr = col - dc;
 	while(rowptr >= 0 && colptr >= 0
 	&& rowptr < lines && colptr < lines){
-		if(board[rowptr][colptr] == player){
+		if(targetBoard[rowptr][colptr] == player){
 			count++;
 			rowptr -= dr;
 			colptr -= dc;
-		}else if(board[rowptr][colptr] == 0){
+		}else if(targetBoard[rowptr][colptr] == 0){
 			openEnds++;
 			break;
 		}else{
@@ -150,9 +154,17 @@ int scoreDirection(int row, int col, int dr, int dc, int player){
 	}
 }
 
+int scoreDirection(int row, int col, int dr, int dc, int player){
+	return scoreDirectionOnBoard(board,row,col,dr,dc,player);
+}
+
+int scorePointOnBoard(const int targetBoard[lines][lines],int row,int col,int player){
+	return scoreDirectionOnBoard(targetBoard,row,col,0,1,player) + scoreDirectionOnBoard(targetBoard,row,col,1,0,player)
+	+ scoreDirectionOnBoard(targetBoard,row,col,1,1,player) + scoreDirectionOnBoard(targetBoard,row,col,-1,1,player);
+}
+
 int scorePoint(int row,int col,int player){
-	return scoreDirection(row,col,0,1,player) + scoreDirection(row,col,1,0,player)
-	+ scoreDirection(row,col,1,1,player) + scoreDirection(row,col,-1,1,player);
+	return scorePointOnBoard(board,row,col,player);
 }
 
 bool chooseNormalMove(int aiPlayer,int &bestRow,int &bestCol){
@@ -211,6 +223,147 @@ bool chooseNormalMove(int aiPlayer,int &bestRow,int &bestCol){
 				double tempScore = attackScore + defenseScore * power;
 				if(tempScore > bestGreedScore){
 					bestGreedScore = tempScore;
+					bestRow = row;
+					bestCol = col;
+				}
+			}
+		}
+	}
+	return hasMove;
+}
+
+void copyBoardForSearch(){
+	for(int row = 0;row < lines;row++){
+		for(int col = 0;col < lines;col++){
+			searchBoard[row][col] = board[row][col];
+		}
+	}
+}
+
+void placeSearchMove(int row, int col, int player){
+	searchBoard[row][col] = player;
+}
+void undoSearchMove(int row, int col){
+	searchBoard[row][col] = 0;
+}
+
+bool hasNeighbor(const int targetBoard[lines][lines],int row,int col,int distance){
+	for(int i = row - distance;i <= row + distance;i++){
+		for(int j = col - distance;j <= col + distance;j++){
+			if(i >= 0 && i < lines && j >= 0 && j < lines){
+				if(targetBoard[i][j] != 0){
+					return true;
+				}
+			}
+		}
+	}
+	return false;
+}
+
+double evaluateSearchBoard(int aiPlayer){
+    int opPlayer = aiPlayer == 1 ? 2 : 1;
+
+    int aiBest_1 = 0;
+    int aiBest_2 = 0;
+    int opBest_1 = 0;
+    int opBest_2 = 0;
+
+    for(int row = 0;row < lines;row++){
+		for(int col = 0;col < lines;col++){
+			if(searchBoard[row][col] == 0 && hasNeighbor(searchBoard,row,col,distance)){
+				int aiTempScore = scorePointOnBoard(searchBoard,row,col,aiPlayer);
+				int opTempScore = scorePointOnBoard(searchBoard,row,col,opPlayer);
+				if(aiTempScore > aiBest_1){
+					aiBest_2 = aiBest_1;
+					aiBest_1 = aiTempScore;
+				}else if(aiTempScore > aiBest_2){
+					aiBest_2 = aiTempScore;
+				}
+				if(opTempScore > opBest_1){
+					opBest_2 = opBest_1;
+					opBest_1 = opTempScore;
+				}else if(opTempScore > opBest_2){
+					opBest_2 = opTempScore;
+				}
+			}
+		}
+	}
+
+    return aiBest_1 + aiBest_2 * 0.5 - opBest_1 - opBest_2 * 0.5;
+}
+
+double evaluateHardMove(int row, int col, int aiPlayer,double alpha){
+	int opPlayer = aiPlayer == 1 ? 2 : 1;
+	placeSearchMove(row,col,aiPlayer);
+	if(isWinningMoveOnBoard(searchBoard,row,col,aiPlayer)){
+		undoSearchMove(row,col);
+		return WIN_SCORE;
+	}
+	
+	double worstScore = WIN_SCORE;
+    bool hasReply = false;
+	
+	for(int opRow = 0;opRow < lines;opRow++){
+		for(int opCol = 0;opCol < lines;opCol++){
+			if(searchBoard[opRow][opCol] == 0 && hasNeighbor(searchBoard,opRow,opCol,distance)){
+				hasReply = true;
+				placeSearchMove(opRow,opCol,opPlayer);
+				double replyScore;
+				if(isWinningMoveOnBoard(searchBoard,opRow,opCol,opPlayer)){
+					undoSearchMove(row,col);
+					undoSearchMove(opRow,opCol);
+		            return -WIN_SCORE;
+	            }else{
+	            	replyScore = evaluateSearchBoard(aiPlayer);
+				}
+				undoSearchMove(opRow,opCol);
+				worstScore = worstScore <= replyScore ? worstScore : replyScore;
+				if(worstScore <= alpha){
+					undoSearchMove(row,col);
+					return worstScore;
+				}
+			}
+		}
+	}
+	undoSearchMove(row,col);
+	
+	if(!hasReply){
+		return 0;
+	}
+	
+	return worstScore;
+}
+
+bool chooseHardMove(int aiPlayer,int &bestRow,int &bestCol){
+	copyBoardForSearch();
+	bool hasMove = false;
+	
+	bool isEmpty = true;
+	for(int row = 0;row < lines;row++){
+		for(int col = 0;col < lines;col++){
+			if(searchBoard[row][col] != 0){
+				isEmpty = false;
+				break;
+			}
+		}
+		if(!isEmpty){
+			break;
+		}
+	}
+	if(isEmpty){
+		bestRow = lines / 2;
+        bestCol = lines / 2;
+        return true;
+	}
+	
+	double bestScore = -WIN_SCORE - 1;
+	for(int row = 0;row < lines;row++){
+		for(int col = 0;col < lines;col++){
+			if(searchBoard[row][col] == 0 && hasNeighbor(searchBoard,row,col,distance)){
+				hasMove = true;
+				double tempScore = evaluateHardMove(row,col,aiPlayer,bestScore);
+				if(tempScore > bestScore){
+					bestScore = tempScore;
 					bestRow = row;
 					bestCol = col;
 				}
