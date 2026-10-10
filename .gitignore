@@ -13,3 +13,6 @@
 # Dev-C++ generated project files
 /Makefile.win
 *.layout
+
+# Runtime game saves
+/*Save.txt

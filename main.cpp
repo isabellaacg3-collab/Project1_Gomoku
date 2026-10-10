@@ -4,6 +4,7 @@
 #include "Gomoku.h"
 #include "StartMenu.h"
 #include "AI.h"
+#include "History.h"
 
 int board[lines][lines] = {0};
 
@@ -29,6 +30,7 @@ int main(){
 	initgraph(windowX,windowY,0);
 	setbkcolor(EGERGB(238, 196, 126));
 	drawMenu();
+	History history;
     
 	int currentPlayer = 1;
 	int localStarter = 1;
@@ -37,6 +39,7 @@ int main(){
     		int bestRow,bestCol;
     		if(chooseEasyMove(currentPlayer,bestRow,bestCol)){
     			placeChess(bestRow,bestCol,currentPlayer);
+    			history.record(bestRow,bestCol,currentPlayer);
     			if(!checkWin(bestRow,bestCol,currentPlayer)){
     				if(isBoardFull()){
     					roundDraw();
@@ -49,6 +52,7 @@ int main(){
     		int bestRow,bestCol;
     		if(chooseNormalMove(currentPlayer,bestRow,bestCol)){
     			placeChess(bestRow,bestCol,currentPlayer);
+    			history.record(bestRow,bestCol,currentPlayer);
     			if(!checkWin(bestRow,bestCol,currentPlayer)){
 					if(isBoardFull()){
     					roundDraw();
@@ -61,6 +65,7 @@ int main(){
     		int bestRow,bestCol;
     		if(chooseHardMove(currentPlayer,bestRow,bestCol)){
     			placeChess(bestRow,bestCol,currentPlayer);
+    			history.record(bestRow,bestCol,currentPlayer);
     			if(!checkWin(bestRow,bestCol,currentPlayer)){
 					if(isBoardFull()){
     					roundDraw();
@@ -90,13 +95,51 @@ int main(){
 				if(msg.x >= 650 && msg.x <= 780
 				&& msg.y >= 580 && msg.y <= 630){
 					resetGame(currentPlayer);
+					history.clear();
 					gamestate = MENU;
 					drawMenu();
+				}
+				if(msg.x >= 630 && msg.x <= 690
+				&& msg.y >= 345 && msg.y <= 370){
+					history.save("localSave.txt", currentPlayer, whiteWins, blackWins);
+				}
+				if(msg.x >= 630 && msg.x <= 690
+				&& msg.y >= 375 && msg.y <= 400){
+					if(history.load("localSave.txt", currentPlayer, whiteWins, blackWins,
+					                &roundOver, &gameOver)){
+					    for(int row = 0;row < lines;row++){
+						    for(int col = 0;col < lines;col++){
+							    board[row][col] = 0;
+						    }
+					    }
+					}
+					roundOver = false;
+					drawBoard(whiteWins, blackWins);
+					for(const Step &step : history.getSteps()){
+						int player = step.player;
+						placeChess(step.row,step.col,player);
+					}
+					if(history.size() > 0){
+						const Step &last = history.getSteps()[history.size() - 1];
+						int lastPlayer = last.player;
+						if(isWinningMoveOnBoard(board,last.row,last.col,lastPlayer)){
+							int savedWhiteWins = whiteWins;
+							int savedBlackWins = blackWins;
+							checkWin(last.row,last.col,lastPlayer);
+							whiteWins = savedWhiteWins;
+							blackWins = savedBlackWins;
+						}else{
+							drawCurrentTurn(currentPlayer);
+						}
+					}else{
+						drawCurrentTurn(currentPlayer);
+					}
 				}
 				if(!roundOver && !gameOver){
 					int row,col;
 					if(canPlaceChess(msg.x,msg.y,row,col)){
 						placeChess(row,col,currentPlayer);
+						history.record(row,col,currentPlayer);
 						if(!checkWin(row,col,currentPlayer)){
 							if(isBoardFull()){
     					        roundDraw();
@@ -108,7 +151,7 @@ int main(){
 		        }else if(roundOver && !gameOver){
 		    	    if(msg.x >= 650 && msg.x <=780 && msg.y >=220 && msg.y <=270){
 		    		    resetRound(currentPlayer);
-		    		    
+		    		    history.clear();
 		    		    localStarter = (localStarter == 1) ? 2 : 1;
 		    		    currentPlayer = localStarter;
 		    		    drawCurrentTurn(currentPlayer);
@@ -116,6 +159,7 @@ int main(){
 			    }else if(gameOver){
 				    if(msg.x >= 650 && msg.x <=780 && msg.y >=420 && msg.y <=470){
 		    		    resetGame(currentPlayer);
+		    		    history.clear();
 		    		    localStarter = 1;
 		    		    currentPlayer = localStarter;
 		    		    drawCurrentTurn(currentPlayer);
@@ -151,10 +195,47 @@ int main(){
 					gamestate = MENU;
 					drawMenu();
 				}
+				if(msg.x >= 630 && msg.x <= 690
+				&& msg.y >= 345 && msg.y <= 370){
+					history.save("easySave.txt", currentPlayer, whiteWins, blackWins);
+				}
+				if(msg.x >= 630 && msg.x <= 690
+				&& msg.y >= 375 && msg.y <= 400){
+					if(history.load("easySave.txt", currentPlayer, whiteWins, blackWins,
+					                &roundOver, &gameOver)){
+					    for(int row = 0;row < lines;row++){
+						    for(int col = 0;col < lines;col++){
+							    board[row][col] = 0;
+						    }
+					    }
+					}
+					roundOver = false;
+					drawBoard(whiteWins, blackWins);
+					for(const Step &step : history.getSteps()){
+						int player = step.player;
+						placeChess(step.row,step.col,player);
+					}
+					if(history.size() > 0){
+						const Step &last = history.getSteps()[history.size() - 1];
+						int lastPlayer = last.player;
+						if(isWinningMoveOnBoard(board,last.row,last.col,lastPlayer)){
+							int savedWhiteWins = whiteWins;
+							int savedBlackWins = blackWins;
+							checkWin(last.row,last.col,lastPlayer);
+							whiteWins = savedWhiteWins;
+							blackWins = savedBlackWins;
+						}else{
+							drawCurrentTurn(currentPlayer);
+						}
+					}else{
+						drawCurrentTurn(currentPlayer);
+					}
+				}
 				if(!roundOver && !gameOver && currentPlayer == 1){
 					int row,col;
 					if(canPlaceChess(msg.x,msg.y,row,col)){
 						placeChess(row,col,currentPlayer);
+						history.record(row,col,currentPlayer);
 						if(!checkWin(row,col,currentPlayer)){
 							if(isBoardFull()){
     					        roundDraw();
@@ -166,11 +247,13 @@ int main(){
 		        }else if(roundOver && !gameOver){
 		    	    if(msg.x >= 650 && msg.x <=780 && msg.y >=220 && msg.y <=270){
 		    		    resetRound(currentPlayer);
+		    		    history.clear();
 		    		    drawCurrentTurn(currentPlayer);
 				    }
 			    }else if(gameOver){
 				    if(msg.x >= 650 && msg.x <=780 && msg.y >=420 && msg.y <=470){
 		    		    resetGame(currentPlayer);
+		    		    history.clear();
 		    		    drawCurrentTurn(currentPlayer);
 				    }
 			    }
@@ -181,10 +264,47 @@ int main(){
 					gamestate = MENU;
 					drawMenu();
 				}
+				if(msg.x >= 630 && msg.x <= 690
+				&& msg.y >= 345 && msg.y <= 370){
+					history.save("normalSave.txt", currentPlayer, whiteWins, blackWins);
+				}
+				if(msg.x >= 630 && msg.x <= 690
+				&& msg.y >= 375 && msg.y <= 400){
+					if(history.load("normalSave.txt", currentPlayer, whiteWins, blackWins,
+					                &roundOver, &gameOver)){
+					    for(int row = 0;row < lines;row++){
+						    for(int col = 0;col < lines;col++){
+							    board[row][col] = 0;
+						    }
+					    }
+					}
+					roundOver = false;
+					drawBoard(whiteWins, blackWins);
+					for(const Step &step : history.getSteps()){
+						int player = step.player;
+						placeChess(step.row,step.col,player);
+					}
+					if(history.size() > 0){
+						const Step &last = history.getSteps()[history.size() - 1];
+						int lastPlayer = last.player;
+						if(isWinningMoveOnBoard(board,last.row,last.col,lastPlayer)){
+							int savedWhiteWins = whiteWins;
+							int savedBlackWins = blackWins;
+							checkWin(last.row,last.col,lastPlayer);
+							whiteWins = savedWhiteWins;
+							blackWins = savedBlackWins;
+						}else{
+							drawCurrentTurn(currentPlayer);
+						}
+					}else{
+						drawCurrentTurn(currentPlayer);
+					}
+				}
 				if(!roundOver && !gameOver && currentPlayer == 1){
 					int row,col;
 					if(canPlaceChess(msg.x,msg.y,row,col)){
 						placeChess(row,col,currentPlayer);
+						history.record(row,col,currentPlayer);
 						if(!checkWin(row,col,currentPlayer)){
 							if(isBoardFull()){
     					        roundDraw();
@@ -196,12 +316,14 @@ int main(){
 		        }else if(roundOver && !gameOver){
 		    	    if(msg.x >= 650 && msg.x <=780 && msg.y >=220 && msg.y <=270){
 		    		    resetRound(currentPlayer);
+		    		    history.clear();
 		    	    	currentPlayer = rand() % 2 + 1;
 		    	    	drawCurrentTurn(currentPlayer);
 				    }
 			    }else if(gameOver){
 				    if(msg.x >= 650 && msg.x <=780 && msg.y >=420 && msg.y <=470){
 		    		    resetGame(currentPlayer);
+		    		    history.clear();
 		    		    currentPlayer = rand() % 2 + 1;
 		    		    drawCurrentTurn(currentPlayer);
 				    }
@@ -213,10 +335,47 @@ int main(){
 					gamestate = MENU;
 					drawMenu();
 				}
+				if(msg.x >= 630 && msg.x <= 690
+				&& msg.y >= 345 && msg.y <= 370){
+					history.save("hardSave.txt", currentPlayer, whiteWins, blackWins);
+				}
+				if(msg.x >= 630 && msg.x <= 690
+				&& msg.y >= 375 && msg.y <= 400){
+					if(history.load("hardSave.txt", currentPlayer, whiteWins, blackWins,
+					                &roundOver, &gameOver)){
+					    for(int row = 0;row < lines;row++){
+						    for(int col = 0;col < lines;col++){
+							    board[row][col] = 0;
+						    }
+					    }
+					}
+					roundOver = false;
+					drawBoard(whiteWins, blackWins);
+					for(const Step &step : history.getSteps()){
+						int player = step.player;
+						placeChess(step.row,step.col,player);
+					}
+					if(history.size() > 0){
+						const Step &last = history.getSteps()[history.size() - 1];
+						int lastPlayer = last.player;
+						if(isWinningMoveOnBoard(board,last.row,last.col,lastPlayer)){
+							int savedWhiteWins = whiteWins;
+							int savedBlackWins = blackWins;
+							checkWin(last.row,last.col,lastPlayer);
+							whiteWins = savedWhiteWins;
+							blackWins = savedBlackWins;
+						}else{
+							drawCurrentTurn(currentPlayer);
+						}
+					}else{
+						drawCurrentTurn(currentPlayer);
+					}
+				}
 				if(!roundOver && !gameOver && currentPlayer == 1){
 					int row,col;
 					if(canPlaceChess(msg.x,msg.y,row,col)){
 						placeChess(row,col,currentPlayer);
+						history.record(row,col,currentPlayer);
 						if(!checkWin(row,col,currentPlayer)){
 							if(isBoardFull()){
     					        roundDraw();
@@ -228,12 +387,14 @@ int main(){
 		        }else if(roundOver && !gameOver){
 		    	    if(msg.x >= 650 && msg.x <=780 && msg.y >=220 && msg.y <=270){
 		    		    resetRound(currentPlayer);
+		    		    history.clear();
 		    		    currentPlayer = 2;
 		    		    drawCurrentTurn(currentPlayer);
 				    }
 			    }else if(gameOver){
 				    if(msg.x >= 650 && msg.x <=780 && msg.y >=420 && msg.y <=470){
 		    		    resetGame(currentPlayer);
+		    		    history.clear();
 		    		    currentPlayer = 2;
 		    		    drawCurrentTurn(currentPlayer);
 				    }

@@ -6,7 +6,11 @@ using namespace std;
 
 void drawBoard(int whiteWins,int blackWins){
 	cleardevice();
-	setcolor(BLACK);	
+	setcolor(BLACK);
+	rectangle(630,345,690,370);
+	xyprintf(650, 350, "Save");
+	rectangle(630,375,690,400);
+	xyprintf(650, 380, "Load");
 	xyprintf(650, 60, "White Wins: %d", whiteWins);
 	xyprintf(650, 90, "Black Wins: %d", blackWins);
 	rectangle(650,580,780,630);
@@ -91,6 +95,9 @@ void resetGame(int &currentPlayer){
 }
 
 void roundWin(int &currentPlayer){
+	if(roundOver){
+		return;
+	}
 	roundOver = true;
 	if(currentPlayer == 1){
 		whiteWins++;
