@@ -10,7 +10,6 @@ void drawDiffPanel();
 bool chooseEasyMove(int aiPlayer,int &bestRow,int &bestCol);
 bool chooseNormalMove(int aiPlayer,int &bestRow,int &bestCol);
 bool chooseHardMove(int aiPlayer,int &bestRow,int &bestCol);
-double evaluateHardMove(int row, int col, int aiPlayer);
 
 int scoreDirectionOnBoard(const int targetBoard[lines][lines],int row,int col,int dr,int dc,int player);
 int scorePointOnBoard(const int targetBoard[lines][lines],int row,int col,int player);
