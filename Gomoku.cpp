@@ -11,6 +11,8 @@ void drawBoard(int whiteWins,int blackWins){
 	xyprintf(650, 350, "Save");
 	rectangle(630,375,690,400);
 	xyprintf(650, 380, "Load");
+	rectangle(630,405,690,430);
+	xyprintf(650, 410, "Undo");
 	xyprintf(650, 60, "White Wins: %d", whiteWins);
 	xyprintf(650, 90, "Black Wins: %d", blackWins);
 	rectangle(650,580,780,630);
@@ -60,8 +62,8 @@ void gameWin(int currentPlayer){
 		rectangle(650,220,780,270);
 		xyprintf(670,240,"Black Win!");
 	}
-	rectangle(650,420,780,470);
-	xyprintf(670,440,"Reset Game");
+	rectangle(650,470,780,520);
+	xyprintf(670,490,"Reset Game");
 }
 
 

@@ -14,6 +14,8 @@ bool gameOver = false;
 int whiteWins = 0;
 int blackWins = 0;
 
+bool localUndoLocked = true;
+
 enum GameState{
 	MENU,
 	LOCAL_GAME,
@@ -24,8 +26,8 @@ enum GameState{
 	LAN_GAME
 };
 
-void loadGame(History &history,const char *filename,int &currentPlayer,int *localStarter = NULL){
-	if(!history.load(filename,currentPlayer,whiteWins,blackWins,&roundOver,&gameOver)){
+void loadGame(History &history,const char *filename,int &currentPlayer,int *localStarter = NULL,bool *undoLocked = NULL){
+	if(!history.load(filename,currentPlayer,whiteWins,blackWins,&roundOver,&gameOver,undoLocked)){
 		return;
 	}
 	for(int row = 0;row < lines;row++){
@@ -119,6 +121,7 @@ int main(){
 		    	if(msg.x >= 280 && msg.x <= 520
 				&& msg.y >= 220 && msg.y <= 270){
 					localStarter = 1;
+					localUndoLocked = true;
 					currentPlayer = localStarter;
 					
 					gamestate = LOCAL_GAME;
@@ -134,21 +137,40 @@ int main(){
 				&& msg.y >= 580 && msg.y <= 630){
 					resetGame(currentPlayer);
 					history.clear();
+					localUndoLocked = true;
 					gamestate = MENU;
 					drawMenu();
 				}
 				if(msg.x >= 630 && msg.x <= 690
 				&& msg.y >= 345 && msg.y <= 370){
-					history.save("localSave.txt", currentPlayer, whiteWins, blackWins, roundOver, gameOver);
+					history.save("localSave.txt", currentPlayer, whiteWins, blackWins, roundOver, gameOver, localUndoLocked);
 				}
 				if(msg.x >= 630 && msg.x <= 690
 				&& msg.y >= 375 && msg.y <= 400){
-					loadGame(history,"localSave.txt",currentPlayer,&localStarter);
+					loadGame(history,"localSave.txt",currentPlayer,&localStarter,&localUndoLocked);
+				}
+				if(msg.x >= 630 && msg.x <= 690
+				&& msg.y >= 405 && msg.y <= 430){
+					if(history.size() != 0 && !roundOver && !gameOver && !localUndoLocked){
+						Step removed;
+						if(history.popLast(removed)){
+							board[removed.row][removed.col] = 0;
+							currentPlayer = removed.player;
+							localUndoLocked = true;
+							drawBoard(whiteWins,blackWins);
+							for(const Step &step : history.getSteps()){
+								int player = step.player;
+								placeChess(step.row,step.col,player);
+							}
+							drawCurrentTurn(currentPlayer);
+						}
+					}
 				}
 				if(!roundOver && !gameOver){
 					int row,col;
 					if(canPlaceChess(msg.x,msg.y,row,col)){
 						placeChess(row,col,currentPlayer);
+						localUndoLocked = false;
 						history.record(row,col,currentPlayer);
 						if(!checkWin(row,col,currentPlayer)){
 							if(isBoardFull()){
@@ -162,14 +184,16 @@ int main(){
 		    	    if(msg.x >= 650 && msg.x <=780 && msg.y >=220 && msg.y <=270){
 		    		    resetRound(currentPlayer);
 		    		    history.clear();
+						localUndoLocked = true;
 		    		    localStarter = (localStarter == 1) ? 2 : 1;
 		    		    currentPlayer = localStarter;
 		    		    drawCurrentTurn(currentPlayer);
 				    }
 			    }else if(gameOver){
-				    if(msg.x >= 650 && msg.x <=780 && msg.y >=420 && msg.y <=470){
+				    if(msg.x >= 650 && msg.x <=780 && msg.y >=470 && msg.y <=520){
 		    		    resetGame(currentPlayer);
 		    		    history.clear();
+						localUndoLocked = true;
 		    		    localStarter = 1;
 		    		    currentPlayer = localStarter;
 		    		    drawCurrentTurn(currentPlayer);
@@ -234,7 +258,7 @@ int main(){
 		    		    drawCurrentTurn(currentPlayer);
 				    }
 			    }else if(gameOver){
-				    if(msg.x >= 650 && msg.x <=780 && msg.y >=420 && msg.y <=470){
+				    if(msg.x >= 650 && msg.x <=780 && msg.y >=470 && msg.y <=520){
 		    		    resetGame(currentPlayer);
 		    		    history.clear();
 		    		    drawCurrentTurn(currentPlayer);
@@ -277,7 +301,7 @@ int main(){
 		    	    	drawCurrentTurn(currentPlayer);
 				    }
 			    }else if(gameOver){
-				    if(msg.x >= 650 && msg.x <=780 && msg.y >=420 && msg.y <=470){
+				    if(msg.x >= 650 && msg.x <=780 && msg.y >=470 && msg.y <=520){
 		    		    resetGame(currentPlayer);
 		    		    history.clear();
 		    		    currentPlayer = rand() % 2 + 1;
@@ -321,7 +345,7 @@ int main(){
 		    		    drawCurrentTurn(currentPlayer);
 				    }
 			    }else if(gameOver){
-				    if(msg.x >= 650 && msg.x <=780 && msg.y >=420 && msg.y <=470){
+				    if(msg.x >= 650 && msg.x <=780 && msg.y >=470 && msg.y <=520){
 		    		    resetGame(currentPlayer);
 		    		    history.clear();
 		    		    currentPlayer = 2;
