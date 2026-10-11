@@ -1,0 +1,353 @@
+========================================================================
+ 存档 / 读档功能 修改说明
+========================================================================
+
+【文件编码】GBK / ANSI（无 BOM），与 DSH 文件夹内其它文件一致。
+  用 VS Code 打开显示乱码时，请手动把编码切成 GBK / GB2312。
+
+【本文范围】记录本项目"存盘续玩"功能从新增到修好的全过程，以及最终方案。
+  涉及文件：History.h、History.cpp、Gomoku.cpp、main.cpp（均在工程根目录）。
+
+
+【阅读说明】前七节保留为历次修改记录，其中“最终方案”“成功”和“遗留”均是
+  当时的结论。当前实现及本轮验收结果以第八节（2026-10-11）为准。
+
+------------------------------------------------------------------------
+ 一、功能结构（现状）
+------------------------------------------------------------------------
+
+ 1. 存档用"落子序列"而非盘面矩阵
+    新增了 History 类（History.h / History.cpp），内部是
+        vector<Step> steps;          // 每手记录 row / col / player
+        class Step{ int row; int col; int player; };
+    存盘时写的是这一串落子，读档时**逐手重放** placeChess 来还原盘面。
+
+ 2. 存档文件格式（save 写出 / load 读入）
+        第 1 行   currentPlayer
+        第 2 行   whiteWins blackWins
+        第 3 行   落子步数 N
+        第 4 行   roundOver gameOver      <-- 本次新增的一行
+        之后 N 行 row col player
+
+ 3. 文件与模式一一对应
+        localSave.txt    本地双人
+        easySave.txt     AI 简单
+        normalSave.txt   AI 普通
+        hardSave.txt     AI 困难
+
+ 4. 按行读取的健壮性写法
+    load 读取第 4 行时用
+        int ro = 0,go = 0;
+        if(fin >> ro >> go){ ... }
+    这样做的目的是：**旧格式存档（没有第 4 行）依然能读**，
+    读不到就保持原值，不会把 roundOver / gameOver 写成垃圾值。
+
+
+------------------------------------------------------------------------
+ 二、修改过程（四轮，前三轮失败）
+------------------------------------------------------------------------
+
+ ● 第 1 轮：让存档记住"本局是否已结束"
+   改动：
+     - History.h    save / load 各加两个带默认值的参数
+                        save(..., bool roundOver = false, bool gameOver = false);
+                        load(..., bool *roundOver = NULL, bool *gameOver = NULL);
+     - History.cpp  save 多写一行标志位；load 多读一行并回写
+     - main.cpp     4 处 load 调用补上 &roundOver, &gameOver
+   目的：解决"在一局结束后读档，回合状态丢失"的问题。
+   结果：**未解决**。原因见第三节。
+
+ ● 第 2 轮：读档后"补一次判定"
+   改动：
+     - Gomoku.cpp  roundWin() 开头加防重复加分的守卫
+     - main.cpp    4 段读档块改为：读档 -> 重放 -> 若存档时本局已结束则补判定
+   目的：让读档后重新亮出胜利结果。
+   结果：**未解决，反而引入新问题**。原因见第三节。
+
+ ● 第 3 轮：改判"末手是否成五"（成功）
+
+ ● 第 4 轮：改成"扫描整段棋谱找制胜手"（成功）
+   现象（用户反馈）：一局结束后存档，进入下一局再读档，**胜场数错误多加一**
+                    （本地双人与三个 AI 模式都存在）。
+   改动：main.cpp 四段读档块，把"只看末手"改成"逐手重放时扫描制胜手"。
+
+        int winIndex = -1;
+        int winPlayer = 0;
+        for(int i = 0;i < (int)history.getSteps().size();i++){
+            const Step &s = history.getSteps()[i];
+            int p = s.player;
+            placeChess(s.row,s.col,p);
+            if(isWinningMoveOnBoard(board,s.row,s.col,p)){
+                winIndex = i;
+                winPlayer = p;
+            }
+        }
+        if(winIndex >= 0){
+            /* 清盘后重放到制胜手为止 */
+            for(...) board[row][col] = 0;
+            for(int i = 0;i <= winIndex;i++){ placeChess(...); }
+            const Step &last = history.getSteps()[winIndex];
+            int savedWhiteWins = whiteWins;
+            int savedBlackWins = blackWins;
+            roundOver = false;
+            checkWin(last.row,last.col,winPlayer);
+            whiteWins = savedWhiteWins;
+            blackWins = savedBlackWins;
+        }else{
+            drawCurrentTurn(currentPlayer);
+        }
+
+   为什么第 3 轮仍然不对：第 3 轮只检查"最后一手"是否成五。而实际存档里
+   制胜手**可能在棋谱中间**——用户的 localSave.txt 共 20 手、跨两个回合，
+   五连出现在第 9 手（6 8 1 / 7 8 1 / 8 8 1 / 9 8 1 / 10 8 1 竖线），
+   第 10~20 手已经是下一回合的棋。此时末手不是五连，判胜被整段跳过，
+   而 roundOver 又是 false，于是回合状态与比分都没能正确恢复。
+
+   三个要点：
+     1) 扫描而非只看末手；isWinningMoveOnBoard 必须在**逐手重放的当时**
+        判定（那时盘面才对应到第 i 手），所以扫描与重放合并为一遍。
+     2) 判胜后再还原比分：checkWin 会顺带 whiteWins++，前后夹住、
+        调用完还原，保证读档后比分严格等于存档里的值。
+     3) 中盘存档（无人成五）走 else 分支，不进入局末、可继续落子。
+
+   复现与验证（用真实 Gomoku.cpp + History.cpp，打桩 EGE，驱动完整点击流程）：
+
+        场景 A  五连在棋谱中间（末尾是下一回合的棋，即用户的情况）
+                修复前 DELTA=+1（BUG）  ->  修复后 DELTA=+0，
+                roundOver=1、横幅恢复为 "Black Win!"
+        场景 B  五连就是末手            ->  DELTA=+0、横幅恢复
+        场景 C  中盘存档（未分胜负）    ->  DELTA=+0、roundOver=0、可继续落子
+        场景 D  连续读档三次            ->  DELTA=+0，不累积增长
+
+   结论：本轮已复现（改动前 DELTA=+1）并修复（改动后 DELTA=+0），
+        四个场景全部通过。
+   改动：main.cpp 4 段读档块统一改成读取末尾落子、直接看盘面判胜。
+   结果：**验证成功**。
+
+
+------------------------------------------------------------------------
+ 三、前两轮失败的根本原因
+------------------------------------------------------------------------
+
+ 原因 1：把"判定"错当成"触发"
+   isWinningMove() 是**纯判定函数，没有任何副作用**——它只返回 bool，
+   并不会调用 roundWin()、不画横幅、不加比分。
+   真正会触发判胜的是 checkWin()（它内部才调用 roundWin(currentPlayer)）。
+   所以第 2 轮写的
+        isWinningMove(last.row,last.col,last.player);
+   这一句是**空操作**，什么都不会发生。
+
+ 原因 2：变量赋值顺序写反，条件恒为假
+   第 2 轮写成
+        bool restoringWin = roundOver;
+        roundOver = false;              <-- 在 load 之前就置 false
+        ... history.load(..., &roundOver, &gameOver) ...
+   由于 roundOver 在 load **之前**就被置为 false，restoringWin 恒为 false，
+   后面那段用 restoringWin 保护的补判定**整段被跳过**。
+   正确顺序必须是：先 load（取得存档里的 roundOver），再取 restoringWin。
+
+ 原因 3（最关键）：不该依赖存档里的标志位
+   解析用户实际产生的 localSave.txt 发现：
+        第 1 行 1      第 2 行 1 0      第 3 行 9      第 4 行 0 0
+   而逐手复算这 9 手，第 9 手 (6,11) 白棋已经连成五子（(6,7)...(6,11) 竖线），
+   即**盘上已经赢了、比分也已经加了，但第 4 行的 roundOver 仍是 0**。
+   既然这个标志在实际游戏流程中并不可靠，任何"以该标志为条件"的修复
+   都会失效——这正是第 1、2 轮都修不好的深层原因。
+
+
+------------------------------------------------------------------------
+ 四、最终方案（第 3 轮，已验证）
+------------------------------------------------------------------------
+
+ 核心转变：**不再看存档标志，直接看"最后一手是否成五"。**
+
+ main.cpp 四段读档块统一为（local / easy / normal / hard 完全一致）：
+
+        roundOver = false;
+        drawBoard(whiteWins, blackWins);
+        for(const Step &step : history.getSteps()){
+            int player = step.player;
+            placeChess(step.row,step.col,player);
+        }
+        if(history.size() > 0){
+            const Step &last = history.getSteps()[history.size() - 1];
+            int lastPlayer = last.player;
+            if(isWinningMoveOnBoard(board,last.row,last.col,lastPlayer)){
+                int savedWhiteWins = whiteWins;
+                int savedBlackWins = blackWins;
+                checkWin(last.row,last.col,lastPlayer);
+                whiteWins = savedWhiteWins;
+                blackWins = savedBlackWins;
+            }else{
+                drawCurrentTurn(currentPlayer);
+            }
+        }else{
+            drawCurrentTurn(currentPlayer);
+        }
+
+ 三个要点：
+
+ 1) 判定依据换成盘面
+    isWinningMoveOnBoard(board, last...) 直接检查"重放后盘面上的末手是否成五"，
+    因此**存档第 4 行即使是 0 0 也能正确恢复胜利**。
+
+ 2) 用 checkWin() 而不是 isWinningMove()
+    checkWin() 才会真正调用 roundWin()，从而画出
+    "White Win! / Black Win!" 与 "Next Round"（或到 2 胜时的 "Reset Game"）。
+
+ 3) 前后夹住比分再还原
+    checkWin() 会顺带 whiteWins++ / blackWins++，
+    所以先存一份、调用完再还原，避免出现
+    "读档后比分 1:0 变成 2:0"的重复加计。
+
+ Gomoku.cpp 的 roundWin() 守卫保留为纯防重复加分（不含任何状态重置）：
+
+        void roundWin(int &currentPlayer){
+            if(roundOver){
+                return;
+            }
+            roundOver = true;
+            ...
+        }
+
+ 附带修好的另一个问题：
+ 由于"只有末手成五才算局末"，中盘存档（末手不成五）会走 else 分支，
+ 不会被误判成局末，AI 也不会在轮到它时被卡住不再落子。
+
+
+------------------------------------------------------------------------
+ 五、修改过的文件一览
+------------------------------------------------------------------------
+
+ History.h
+     save / load 增加 roundOver、gameOver 两个带默认值的参数
+ History.cpp
+     save 多写一行标志位；load 多读一行（读不到则保持原值，兼容旧存档）
+ Gomoku.cpp
+     roundWin() 开头增加防重复加分守卫
+ main.cpp
+     4 处 save 调用不变（走默认参数）
+     4 处 load 调用补 &roundOver, &gameOver
+     4 段读档块改为"重放 + 末手判胜 + 比分还原"
+
+
+------------------------------------------------------------------------
+ 六、验证结果
+------------------------------------------------------------------------
+
+ 已验证：
+   - 解析实际存档 localSave.txt，确认末手 (6,11) 成五、而标志位为 0 0
+     （说明"依赖标志位"的方案必然失效）
+   - 四段读档块逻辑完全一致，restoringWin 已彻底移除（0 处残留）
+   - main.cpp / Gomoku.cpp / History.cpp / AI.cpp
+     经 g++ -fsyntax-only -std=c++11 -Wall -Wextra 检查，零警告零错误
+   - 用户实机按原步骤验证：局末存档 -> 读档，能重新显示胜利，
+     且比分不再被重复加计 —— **验证成功**
+
+ 曾经搭建过的测试装置：
+   用真实的 Gomoku.cpp + History.cpp，通过 -include 打桩 EGE 图形函数，
+   并把 main.cpp 的 LOCAL / AI_EASY 分支原样抽取进来，以便真实驱动
+   "点读档 -> 逐帧"的流程。该装置在定位"isWinningMove 无副作用"和
+   "比分被重复加计"两个问题时起了决定性作用，用完已删除。
+
+
+------------------------------------------------------------------------
+ 七、遗留与提醒
+------------------------------------------------------------------------
+
+ 1) 和棋（满盘）存档尚未覆盖
+    本次恢复的是"胜利"这一种局末（判据是五连）。若某一局以满盘和棋
+    结束（roundDraw），在那一刻存档再读档，仍不会重新亮出 "Draw!"。
+    如需覆盖，需再补一句 isBoardFull() 判定。
+
+ 2) 读档失败时不会清盘
+    load 返回 false 时不清空棋盘，但后面的 drawBoard + 重放仍会执行，
+    可能在未清空的盘面上重复画子。属于既有问题，本次未动。
+
+ 3) 存档文件未加入 .gitignore
+    目录下的 localSave.txt / easySave.txt / normalSave.txt / hardSave.txt
+    会进入版本控制，建议自行加一条 *Save.txt 规则。
+
+ 4) 修改源码后必须重新编译
+    只改 .cpp 而不在 Dev-C++ 里重新编译，运行的程序仍是旧版本，
+    现象会与"没修"完全一样。排查此类问题时应先确认 exe 的时间戳
+    晚于源文件。
+
+
+------------------------------------------------------------------------
+ 八、第 5 轮：读档只恢复状态，不重复结算胜场（2026-10-11）
+------------------------------------------------------------------------
+
+ 本轮问题与结论
+   用户反馈：一局结束并存档，进入下一局后再读档，胜场数错误显示多加一次。
+   本轮在本地双人、Easy、Normal、Hard 四种模式中复现并修复。
+   用户随后手动重新编译和测试，反馈“正常”，确认本轮修复可用。
+
+ 1. 根因：还原比分变量，并不能撤销界面与整场状态的副作用
+   旧读档块调用 checkWin()，它会调用 roundWin()，递增胜场、绘制比分，
+   还可能触发 gameWin()，设置 gameOver 并显示 Reset Game。
+   之后虽然把 whiteWins / blackWins 改回存档值，屏幕仍显示加分后的值，
+   gameOver 也没有复原。所以一次胜利存档可能显示成 2:0，并提前结束整场。
+   增加“扫描制胜手”或继续叠加防重复判断，无法消除这些副作用。
+
+   两个附带根因：
+   - 四处 save 调用未传 roundOver / gameOver，默认参数使存档标志一直写成 0。
+   - 旧 load 读取两个标志时不区分文件格式，会吞掉旧格式第一手的坐标；
+     读取未全部成功就清空棋谱、修改状态，损坏文件可能污染当前棋局。
+
+ 2. 最终修改：合并重复逻辑，恢复过程不再调用加分函数
+   main.cpp：
+   - 四段重复读档块合并为 loadGame()。load 失败立即返回，棋盘、棋谱、
+     比分、回合状态及界面均保留；成功后才清盘和重放有效棋谱。
+   - 删除“checkWin() -> 加分 -> 再把比分改回”的补救代码。
+     胜局直接显示胜利结果与 Next Round；胜场达到 winLimit 才显示 Reset Game。
+   - 根据保存的有效落子恢复当前轮次，满盘平局重新显示 Draw!。
+   - 本地模式恢复本局先手记录，下一局正确交替；AI 模式恢复轮次后可继续落子。
+   - 四处 save 显式传入实际 roundOver / gameOver。
+   - 三个 AI 模式 Back to Menu 时清空历史，避免切换模式后混入上一盘棋谱。
+
+   History.cpp：
+   - 先完整读取到临时数据，验证通过后再替换 steps 和外部状态。
+     检查玩家、比分、步数、数据长度、标志取值、坐标及同局重复占位。
+   - 按剩余整数的数量识别有标志的新格式和无标志的旧格式，保留旧档第一手。
+   - 重放验证期间，以成五或满盘为一局结束的边界；旧的跨局混合棋谱只保留
+     最后一局。比分沿用存档值，不因重放历史胜局重新累计。
+   - roundOver 由最后一局盘面或整场结束状态确定，gameOver 由胜场数确定，
+     不依赖旧文件可能错误的 0 0 标志。
+   - save 返回实际文件流结果，不再在写入失败后固定返回 true。
+
+ 3. 改动范围与删改原则
+   本轮功能修复只修改 main.cpp、History.cpp，没有扩展游戏模块。
+   移除重复清盘、二次重放、临时比分备份及“先加分再还原”逻辑。
+   相对本轮接手工作副本，两文件共 538 行变为 444 行，净减少 94 行；
+   其中手动测试后清理了 4 行说明注释，功能逻辑与已验证版本一致。
+   既有存档没有被改写或删除；本文在保留原记录的基础上补充本轮结果。
+
+ 4. 验证记录
+   - 修复前：四种模式均复现“比分显示多 1 / 第一胜就提前整场结束”。
+   - 完整编译：使用 Dev-C++ 附带 MinGW，C++11、-Wall、-Wextra，
+     完成包含 EGE 库的完整编译和链接，未产生警告或错误。
+   - 自动流程验证：36 个游戏场景、209 项检查，全部通过；测试驱动真实
+     main.cpp、History.cpp、Gomoku.cpp、AI.cpp，图形与鼠标接口采用测试桩。
+   - 覆盖：真实点击胜局 -> Save -> Next Round -> Load -> Next Round、
+     四种模式连续读档、中盘续玩、整场结束与 Reset、满盘平局、空局存档、
+     本地先手交替、AI 读档后续下、返回菜单切换模式、旧格式及跨局棋谱。
+   - 异常覆盖：缺失、截断、非数字、越界、重复占位、不合法玩家或比分等
+     存档被拒绝，原棋局状态不变；现有四份实际存档仍能读取。
+   - 用户验收：2026-10-11 手动编译测试正常。该结果由用户反馈确认。
+
+ 5. 对旧结论的更新与当前边界
+   - 第四节的“读档后再次 checkWin()、再还原比分”已被本轮方案替代，
+     不应重新加入；roundWin() 保留用于正常对局中的真实胜利结算。
+   - 第七节第 1 项平局恢复、第 2 项读档失败仍重放的问题，本轮已处理。
+   - 第七节第 3 项已在前一轮 Git 提交中处理：.gitignore 的 /*Save.txt
+     忽略四个运行存档，既有文件仍保留在本地。
+   - 加载步数范围为 0~225；跨局分段以已确认的成五或满盘为边界。
+     无法合法解析的棋谱直接拒绝，不猜测或补造缺失落子。
+   - 写入失败会返回 false，当前界面尚未增加单独的保存失败提示。
+   - 第七节第 4 项仍适用：源码修改后应重新编译运行，避免使用旧 exe。
+
+
+========================================================================
+ 文档结束
+========================================================================

@@ -1,6 +1,7 @@
 #include <vector>
 #include <fstream>
 #include "History.h"
+#include "Gomoku.h"
 using namespace std;
 
 Step::Step(int r,int c,int p):row(r),col(c),player(p){}
@@ -29,40 +30,68 @@ bool History::save(const string &filename,int currentPlayer,int whiteWins,int bl
 	}
 	
 	fout.close();
-	return true;
+	return bool(fout);
 }
 
 bool History::load(const string &filename,int &currentPlayer,int &whiteWins,int &blackWins,
 	bool *roundOver,bool *gameOver){
 	ifstream fin(filename);
-	if(!fin.is_open()){
+	int player,white,black,stepCount;
+	if(!(fin >> player >> white >> black >> stepCount)
+	|| (player != 1 && player != 2) || white < 0 || black < 0
+	|| white > winLimit || black > winLimit || (white == winLimit && black == winLimit)
+	|| stepCount < 0 || stepCount > lines * lines){
 		return false;
 	}
-	
-	steps.clear();
-	
-	int stepCount;
-	fin >> currentPlayer;
-	fin >> whiteWins >> blackWins;
-	fin >> stepCount;
-	
-	int ro = 0,go = 0;
-	if(fin >> ro >> go){
-		if(roundOver){
-			*roundOver = (ro != 0);
+	vector<int> values;
+	fin >> ws;
+	while(fin.peek() != EOF){
+		int value;
+		if(!(fin >> value) || values.size() >= (unsigned)(stepCount * 3 + 2)){
+			return false;
 		}
-		if(gameOver){
-			*gameOver = (go != 0);
-		}
+		values.push_back(value);
+		fin >> ws;
 	}
-	
+	int offset = values.size() == (unsigned)(stepCount * 3 + 2) ? 2 : 0;
+	if(values.size() != (unsigned)(stepCount * 3 + offset)
+	|| (offset && ((values[0] != 0 && values[0] != 1) || (values[1] != 0 && values[1] != 1)))){
+		return false;
+	}
+	vector<Step> loadedSteps;
+	int savedBoard[lines][lines] = {0};
+	int occupied = 0;
+	bool ended = false;
 	for(int i = 0;i < stepCount;i++){
-		int row,col,player;
-		fin >> row >> col >> player;
-		steps.push_back(Step(row,col,player));
+		if(ended){
+			for(int row = 0;row < lines;row++){
+				for(int col = 0;col < lines;col++){
+					savedBoard[row][col] = 0;
+				}
+			}
+			loadedSteps.clear();
+			occupied = 0;
+		}
+		int row = values[offset + i * 3],col = values[offset + i * 3 + 1],color = values[offset + i * 3 + 2];
+		if(row < 0 || row >= lines || col < 0 || col >= lines
+		|| (color != 1 && color != 2) || savedBoard[row][col] != 0){
+			return false;
+		}
+		savedBoard[row][col] = color;
+		loadedSteps.push_back(Step(row,col,color));
+		occupied++;
+		ended = isWinningMoveOnBoard(savedBoard,row,col,color) || occupied == lines * lines;
 	}
-	
-	fin.close();
+	steps.swap(loadedSteps);
+	currentPlayer = player;
+	whiteWins = white;
+	blackWins = black;
+	if(roundOver){
+		*roundOver = ended || white >= winLimit || black >= winLimit;
+	}
+	if(gameOver){
+		*gameOver = white >= winLimit || black >= winLimit;
+	}
 	return true;
 }
 
