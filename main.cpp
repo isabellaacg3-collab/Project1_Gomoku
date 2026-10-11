@@ -238,6 +238,26 @@ int main(){
 				&& msg.y >= 375 && msg.y <= 400){
 					loadGame(history,"easySave.txt",currentPlayer);
 				}
+				if(msg.x >= 630 && msg.x <= 690
+				&& msg.y >= 405 && msg.y <= 430){
+					if(currentPlayer == 1 && !roundOver && !gameOver){
+						Step removed;
+						if(history.undoAI(removed)){
+							currentPlayer = removed.player;
+							for(int row = 0;row < lines;row++){
+								for(int col = 0;col < lines;col++){
+									board[row][col] = 0;
+								}
+							}
+							drawBoard(whiteWins,blackWins);
+							for(const Step &step : history.getSteps()){
+								int player = step.player;
+								placeChess(step.row,step.col,player);
+							}
+							drawCurrentTurn(currentPlayer);
+						}
+					}
+				}
 				if(!roundOver && !gameOver && currentPlayer == 1){
 					int row,col;
 					if(canPlaceChess(msg.x,msg.y,row,col)){
@@ -279,6 +299,26 @@ int main(){
 				if(msg.x >= 630 && msg.x <= 690
 				&& msg.y >= 375 && msg.y <= 400){
 					loadGame(history,"normalSave.txt",currentPlayer);
+				}
+				if(msg.x >= 630 && msg.x <= 690
+				&& msg.y >= 405 && msg.y <= 430){
+					if(currentPlayer == 1 && !roundOver && !gameOver){
+						Step removed;
+						if(history.undoAI(removed)){
+							currentPlayer = removed.player;
+							for(int row = 0;row < lines;row++){
+								for(int col = 0;col < lines;col++){
+									board[row][col] = 0;
+								}
+							}
+							drawBoard(whiteWins,blackWins);
+							for(const Step &step : history.getSteps()){
+								int player = step.player;
+								placeChess(step.row,step.col,player);
+							}
+							drawCurrentTurn(currentPlayer);
+						}
+					}
 				}
 				if(!roundOver && !gameOver && currentPlayer == 1){
 					int row,col;
@@ -323,6 +363,26 @@ int main(){
 				if(msg.x >= 630 && msg.x <= 690
 				&& msg.y >= 375 && msg.y <= 400){
 					loadGame(history,"hardSave.txt",currentPlayer);
+				}
+				if(msg.x >= 630 && msg.x <= 690
+				&& msg.y >= 405 && msg.y <= 430){
+					if(currentPlayer == 1 && !roundOver && !gameOver){
+						Step removed;
+						if(history.undoAI(removed)){
+							currentPlayer = removed.player;
+							for(int row = 0;row < lines;row++){
+								for(int col = 0;col < lines;col++){
+									board[row][col] = 0;
+								}
+							}
+							drawBoard(whiteWins,blackWins);
+							for(const Step &step : history.getSteps()){
+								int player = step.player;
+								placeChess(step.row,step.col,player);
+							}
+							drawCurrentTurn(currentPlayer);
+						}
+					}
 				}
 				if(!roundOver && !gameOver && currentPlayer == 1){
 					int row,col;

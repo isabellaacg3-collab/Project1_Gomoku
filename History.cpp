@@ -21,10 +21,6 @@ bool History::popLast(Step &removedStep){
 	return true;
 }
 
-void History::undo(){
-	
-}
-
 bool History::save(const string &filename,int currentPlayer,int whiteWins,int blackWins,
 	bool roundOver,bool gameOver,bool localUndoLocked){
 	ofstream fout(filename);
@@ -125,7 +121,6 @@ bool History::load(const string &filename,int &currentPlayer,int &whiteWins,int 
 		*gameOver = white >= winLimit || black >= winLimit;
 	}
 	if(localUndoLocked){
-		// Old saves have no undo state: unlock only after a new move.
 		*localUndoLocked = offset == 3 ? values[2] != 0 : true;
 	}
 	return true;
@@ -141,4 +136,24 @@ int History::size() const{
 
 const vector<Step>& History::getSteps() const{
     return steps;
+}
+
+bool History::undoAI(Step &removedStep){
+	const vector<Step> &steps = getSteps();
+	
+	if(steps.empty()){
+		return false;
+	}else if(steps.back().player == 2){
+		if(steps.size() >= 2 && steps[steps.size() - 2].player == 1){
+			popLast(removedStep);
+			popLast(removedStep);
+			return true;
+		}else{
+			return false;
+		}
+	}else if(steps.back().player == 1){
+		return false;
+	}
+	
+	return false;
 }

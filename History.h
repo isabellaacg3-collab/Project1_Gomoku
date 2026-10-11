@@ -21,7 +21,7 @@ class History{
 		
 		bool popLast(Step &removedStep);
 
-		void undo();
+		bool undoAI(Step &removedStep);
 		
 		bool save(const string &filename,int currentPlayer,int whiteWins,int blackWins,
 			bool roundOver = false,bool gameOver = false,bool localUndoLocked = false);
