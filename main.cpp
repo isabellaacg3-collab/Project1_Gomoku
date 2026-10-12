@@ -64,6 +64,18 @@ void loadGame(History &history,const char *filename,int &currentPlayer,int *loca
 	}
 }
 
+// Hide actions that are unavailable in LAN without changing the shared board UI.
+void drawLanMask(bool isLanHost){
+	setfillcolor(EGERGB(238, 196, 126));
+	bar(629,344,691,431);
+	if(!isLanHost){
+		bar(649,469,781,521);
+		if(roundOver && !gameOver){
+			bar(649,219,781,271);
+		}
+	}
+}
+
 int main(){
 	srand((unsigned)time(NULL));
 	GameState gamestate = MENU;
@@ -353,6 +365,10 @@ int main(){
 					history.clear();
 					gamestate = MENU;
 					drawMenu();
+				}else if((msg.x >= 630 && msg.x <= 690 && msg.y >= 345 && msg.y <= 430)
+				|| (!isLanHost && msg.x >= 650 && msg.x <= 780
+					&& ((msg.y >= 220 && msg.y <= 270) || (msg.y >= 470 && msg.y <= 520)))){
+					continue;
 				}else if(isLanHost && lanConnected && !roundOver && !gameOver && currentPlayer == 1){
 					int row,col;
 					if(canPlaceChess(msg.x,msg.y,row,col)){
@@ -591,6 +607,9 @@ int main(){
 			    }
 			}
 	    }
+		if(gamestate == LAN_GAME){
+			drawLanMask(isLanHost);
+		}
 	}
 	closeConnection();
 	cleanupNetwork();
