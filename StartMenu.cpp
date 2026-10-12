@@ -15,5 +15,5 @@ void drawMenu(){
 	xyprintf(300,320,"AI");
 	
 	rectangle(280,380,520,430);
-	xyprintf(300,400,"LAN(coming soon)");
+	xyprintf(300,400,"LAN");
 }
