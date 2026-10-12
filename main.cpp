@@ -134,7 +134,8 @@ int main(){
             }
         }else if(gamestate == LAN_GAME && lanConnected && !isLanHost){
 		    char buffer[128];
-		    if(receiveMessage(buffer, sizeof(buffer))){
+			bool disconnected = false;
+		    if(receiveMessage(buffer,sizeof(buffer),disconnected)){
 		    	int row,col,player;
 		    	int starter;
 		    	if(sscanf(buffer, "MOVE %d %d %d", &row, &col, &player) == 3){
@@ -160,9 +161,19 @@ int main(){
 					drawCurrentTurn(currentPlayer);
 				}
 			}
+			if(disconnected){
+			    lanConnected = false;
+                isLanHost = false;
+				resetGame(currentPlayer);
+				history.clear();
+				gamestate = LAN_GAME_PANEL;
+				drawLanPanel();
+				xyprintf(280, 500, "Connection lost.");
+			}
         }else if(gamestate == LAN_GAME && lanConnected && isLanHost){
 		    char buffer[128];
-		    if(receiveMessage(buffer, sizeof(buffer))){
+		    bool disconnected = false;
+		    if(receiveMessage(buffer,sizeof(buffer),disconnected)){
 		    	int row,col;
 		    	if(sscanf(buffer, "REQUEST_MOVE %d %d", &row, &col) == 2){
 		    		if(currentPlayer == 2 && !roundOver && !gameOver 
@@ -183,6 +194,15 @@ int main(){
 					    }
 					}
 				}
+			}
+			if(disconnected){
+			    lanConnected = false;
+                isLanHost = false;
+				resetGame(currentPlayer);
+				history.clear();
+				gamestate = LAN_GAME_PANEL;
+				drawLanPanel();
+				xyprintf(280, 500, "Connection lost.");
 			}
         }
 		while(mousemsg()){
@@ -299,14 +319,14 @@ int main(){
 			}else if(gamestate == LAN_GAME_PANEL && msg.is_down() && msg.is_left()){
 				if(msg.x >= 280 && msg.x <= 520
 				&& msg.y >= 220 && msg.y <= 270){
-					if(startHost(11451)){
+					if(!isLanHost && startHost(11451)){
 						isLanHost = true;
 						lanConnected = false;
 						xyprintf(280, 500, "Waiting for Client...");
 					}
 				}else if(msg.x >= 280 && msg.x <= 520
 				&& msg.y >= 300 && msg.y <= 350){
-					if(connectToHost("127.0.0.1",11451)){
+					if(connectToHost("10.103.239.193",11451)){
 						isLanHost = false;
 						lanConnected = true;
 						currentPlayer = 1;
@@ -317,12 +337,18 @@ int main(){
 					}
 				}else if(msg.x >= 650 && msg.x <= 780
 				&& msg.y >= 580 && msg.y <= 630){
+					closeConnection();
+					lanConnected = false;
+					isLanHost = false;
 					gamestate = MENU;
 					drawMenu();
 				}
 			}else if(gamestate == LAN_GAME && msg.is_down() && msg.is_left()){
 				if(msg.x >= 650 && msg.x <= 780
 				&& msg.y >= 580 && msg.y <= 630){
+					closeConnection();
+					lanConnected = false;
+					isLanHost = false;
 					resetGame(currentPlayer);
 					history.clear();
 					gamestate = MENU;
@@ -566,6 +592,7 @@ int main(){
 			}
 	    }
 	}
+	closeConnection();
 	cleanupNetwork();
 
     return 0;

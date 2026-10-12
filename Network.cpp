@@ -1,10 +1,13 @@
 #include <winsock2.h>
 #include <graphics.h>
 #include <cstring>
+#include <string>
 #include "Network.h"
+using namespace std;
 
 static SOCKET hostSocket = INVALID_SOCKET;
 static SOCKET clientSocket = INVALID_SOCKET;
+static string receiveBuffer;
 
 void drawLanPanel(){
 	cleardevice();
@@ -89,8 +92,10 @@ bool checkForClient(){
     }
     
     u_long mode = 1;
-	ioctlsocket(clientSocket, FIONBIO, &mode);
-
+	if(ioctlsocket(newClient, FIONBIO, &mode) == SOCKET_ERROR){
+        closesocket(newClient);
+        return false;
+    }
     clientSocket = newClient;
     return true;
 }
@@ -114,7 +119,11 @@ bool connectToHost(const char *ip, int port){
     }
     
     u_long mode = 1;
-	ioctlsocket(clientSocket, FIONBIO, &mode);
+	if(ioctlsocket(clientSocket, FIONBIO, &mode) == SOCKET_ERROR){
+        closesocket(clientSocket);
+        clientSocket = INVALID_SOCKET;
+        return false;
+	}
 
     return true;
 }
@@ -124,9 +133,9 @@ bool sendMessage(const char *message){
         return false;
     }
 
-    int length = strlen(message);
+    string data = string(message) + "\n";
 
-    int result = send(clientSocket, message, length, 0);
+    int result = send(clientSocket, data.c_str(), data.size(), 0);
 
     if(result == SOCKET_ERROR){
         return false;
@@ -135,16 +144,54 @@ bool sendMessage(const char *message){
     return true;
 }
 
-bool receiveMessage(char *buffer, int bufferSize){
+bool receiveMessage(char *buffer, int bufferSize, bool &disconnected){
+    disconnected = false;
+
     if(clientSocket == INVALID_SOCKET){
         return false;
     }
 
-    int result = recv(clientSocket, buffer, bufferSize - 1, 0);
+    size_t pos = receiveBuffer.find('\n');
+
+    if(pos != string::npos){
+        string message = receiveBuffer.substr(0, pos);
+        receiveBuffer.erase(0, pos + 1);
+
+        if((int)message.size() >= bufferSize){
+            return false;
+        }
+
+        strcpy(buffer, message.c_str());
+        return true;
+    }
+
+    char temp[256];
+    int result = recv(clientSocket, temp, sizeof(temp), 0);
 
     if(result > 0){
-        buffer[result] = '\0';
-        return true;
+        receiveBuffer.append(temp, result);
+
+        pos = receiveBuffer.find('\n');
+
+        if(pos != string::npos){
+            string message = receiveBuffer.substr(0, pos);
+            receiveBuffer.erase(0, pos + 1);
+
+            if((int)message.size() >= bufferSize){
+                return false;
+            }
+
+            strcpy(buffer, message.c_str());
+            return true;
+        }
+
+        return false;
+    }
+
+    if(result == 0){
+        disconnected = true;
+        closeConnection();
+        return false;
     }
 
     if(result == SOCKET_ERROR){
@@ -153,7 +200,24 @@ bool receiveMessage(char *buffer, int bufferSize){
         if(error == WSAEWOULDBLOCK){
             return false;
         }
+
+        disconnected = true;
+        closeConnection();
+        return false;
     }
 
     return false;
+}
+
+void closeConnection(){
+    if(clientSocket != INVALID_SOCKET){
+        closesocket(clientSocket);
+        clientSocket = INVALID_SOCKET;
+    }
+
+    if(hostSocket != INVALID_SOCKET){
+        closesocket(hostSocket);
+        hostSocket = INVALID_SOCKET;
+    }
+    receiveBuffer.clear();
 }
