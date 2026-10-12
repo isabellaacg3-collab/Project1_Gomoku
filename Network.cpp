@@ -18,7 +18,7 @@ void drawLanPanel(){
 	xyprintf(300,240,"Create Host");
 	
 	rectangle(280,300,520,350);
-	xyprintf(300,320,"Join Localhost");
+	xyprintf(300,320,"Join Host");
 	
 	rectangle(650,580,780,630);
 	xyprintf(670,600,"Back to Menu");

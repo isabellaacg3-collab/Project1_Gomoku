@@ -64,7 +64,6 @@ void loadGame(History &history,const char *filename,int &currentPlayer,int *loca
 	}
 }
 
-// Hide actions that are unavailable in LAN without changing the shared board UI.
 void drawLanMask(bool isLanHost){
 	setfillcolor(EGERGB(238, 196, 126));
 	bar(629,344,691,431);
@@ -338,14 +337,17 @@ int main(){
 					}
 				}else if(msg.x >= 280 && msg.x <= 520
 				&& msg.y >= 300 && msg.y <= 350){
-					if(connectToHost("10.103.239.193",11451)){
-						isLanHost = false;
-						lanConnected = true;
-						currentPlayer = 1;
-						history.clear();
-						gamestate = LAN_GAME;
-						drawBoard(whiteWins, blackWins);
-						drawCurrentTurn(currentPlayer);
+					char hostIp[64] = {0};
+					if(inputbox_getline("Join LAN Game","Enter Host IPv4 address:",hostIp,sizeof(hostIp))){
+					    if(connectToHost(hostIp,11451)){
+						    isLanHost = false;
+						    lanConnected = true;
+						    currentPlayer = 1;
+						    history.clear();
+						    gamestate = LAN_GAME;
+						    drawBoard(whiteWins, blackWins);
+						    drawCurrentTurn(currentPlayer);
+					    }
 					}
 				}else if(msg.x >= 650 && msg.x <= 780
 				&& msg.y >= 580 && msg.y <= 630){
